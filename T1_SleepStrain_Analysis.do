@@ -3,7 +3,6 @@
 * HARP T1 Diary data ONLY
 * by Asya Saydam (asyasaydam@utexas.edu)
 * Fall 2024
-* Templates: Michael Garcia Template do files
 ********************************************************************************
 
 cd   		"T:"
@@ -14,15 +13,6 @@ local 		logdate = string( d(`c(current_date)'), "%dCY.N.D" )
 log 		using "T:\asya\logs\SleepStrain`logdate'_variables.log", replace
 
 
-
-
-********************************************************************************
-* Sleep Project
-* HARP T1 and T2 Baseline data + Diary Data
-* by Asya Saydam (asyasaydam@utexas.edu)
-* Summer 2024
-* Templates: Michael Garcia Template do files
-******************************************************************************
 
 preserve
 use "T:\asya\data\HARP\FINAL DATASETS\FINAL files\37404-0001-Data", clear
@@ -56,15 +46,11 @@ merge m:1 rid using "T:\asya\data\HARP\FINAL DATASETS\FINAL files\T1Baseline", k
 
 drop *_t2
 fre mstat
-keep if mstat== 1
-
-
-
-
+keep if mstat== 1 // keep if marital status is all married 
 mdesc cid rid sid genrelns
 browse rid cid sid 
 
-replace sid = 8528 if rid == 4213
+replace sid = 8528 if rid == 4213 // response id missing for a sinlge case 
 
 tab mstat, m
 
@@ -933,5 +919,98 @@ twoway (scatter strainavg sp_dhrsleep) ///
 	
 
 
+***********************************************
+*** SLEEEP STRAIN CORRELATIONS ***
+***********************************************
+	
+	corr dhrsleep sleepqual
+	
+	** within person-level
+	* Person-mean center both variables
+	bysort rid: egen mean_dur = mean(dhrsleep)
+	bysort rid: egen mean_qual = mean(sleepqual)
+
+	gen dur_centered = dhrsleep - mean_dur
+	gen qual_centered = sleepqual - mean_qual
+
+	* Correlation of within-person deviations
+	corr dur_centered qual_centered 
+	//0.5455
+	
+	* Correlation of respondent and spousal sleep duration
+	corr dhrsleep sp_dhrsleep // 0.2406
+	corr sleepqual sp_sleepqual // 0.1966
+	
+	* Step 3: Loop over each union type (rtyp) and calculate ICC
+	levelsof rtyp, local(types)
+
+
+		* Run random effects model
+		mixed strainavg if rtyp == 1 & day == 1 || cid:, cov(exc) reml
+		* Display ICC
+		estat icc
+		
+		mixed strainavg if rtyp == 2 & day == 1  || cid:
+		* Display ICC
+		estat icc
+		
+		mixed strainavg if rtyp == 3 & day == 1  || cid:
+		* Display ICC
+		estat icc
+		
+		
+		* Run random effects model
+		mixed dhrsleep if rtyp == 1 & day == 1 || cid:
+		* Display ICC
+		estat icc
+		
+		mixed dhrsleep if rtyp == 2 & day == 1  || cid:
+		* Display ICC
+		estat icc
+		
+		mixed dhrsleep if rtyp == 3 & day == 1  || cid:
+		* Display ICC
+		estat icc
+
+		
+		
+		* Run random effects model
+		mixed sleepqual if rtyp == 1 & day == 1 || cid:
+		* Display ICC
+		estat icc
+		
+		mixed sleepqual if rtyp == 2 & day == 1  || cid:
+		* Display ICC
+		estat icc
+		
+		mixed sleepqual if rtyp == 3 & day == 1  || cid:
+		* Display ICC
+		estat icc
+		
+		
+		
+		* Run random effects model
+		mixed sleepqual if rtyp == 1  || cid:
+		* Display ICC
+		estat icc
+		
+		mixed sleepqual if rtyp == 2   || cid:
+		* Display ICC
+		estat icc
+		
+		mixed sleepqual if rtyp == 3 || cid:
+		* Display ICC
+		estat icc
+
+
+	
+	
+	**** Person-level correlation (between-person)
+	preserve
+	* Collapse to person level
+	collapse (mean) sleep_avg = sleepqual dhr_avg = dhrsleep, by(rid)
+	corr sleep_avg dhr_avg // 0.4299
+	restore
+	
 	
 		
